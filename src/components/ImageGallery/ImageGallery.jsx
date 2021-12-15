@@ -1,6 +1,7 @@
 import styles from './ImageGallery.module.css';
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
+//import { ToastContainer } from 'react-toastify';
 
 import api from '../../services/api';
 import ImageGalleryItem from '../ImageGalleryItem/ImageGalleryItem';
@@ -15,101 +16,88 @@ const loaderStyle = {
   transform: 'translate(-50%, -50%)',
 };
 
-class ImageGallery extends Component {
-  state = {
-    searchImages: null,
-    error: null,
-    loading: false,
-    isModalOpen: false,
-    largeImg: null,
+// window.scrollTo({
+//   top: document.body.scrollHeight,
+//   behavior: 'smooth',
+// });
+
+const ImageGallery = ({ searchImgName, page, children }) => {
+  const [searchImages, setSearchImages] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [largeImg, setLargeImg] = useState(null);
+
+  useEffect(() => {
+    setSearchImages(null);
+  }, [searchImgName]);
+
+  useEffect(() => {
+    if (searchImgName === '') return;
+
+    const getImagesFromApi = (searchImgName, page) => {
+      api(searchImgName, page)
+        .then(searchImages => {
+          setSearchImages(preveImages => {
+            if (preveImages === null) {
+              return [...searchImages.hits];
+            }
+
+            return [...preveImages, ...searchImages.hits];
+          });
+        })
+        .catch(err => setError(err))
+        .finally(() => setLoading(false));
+    };
+
+    setLoading(true);
+    getImagesFromApi(searchImgName, page);
+  }, [searchImgName, page]);
+
+  const onClose = () => {
+    setIsModalOpen(false);
   };
 
-  componentDidMount() {
-    this.setState({ loading: true });
-    this.getImagesFromApi(this.props.searchImgName);
-  }
-
-  componentDidUpdate(prevProps, prevState) {
-    const prevImgName = prevProps.searchImgName;
-    const prevPage = prevProps.page;
-    const nextImgName = this.props.searchImgName;
-    const nextPage = this.props.page;
-
-    if (prevImgName !== nextImgName) {
-      this.setState({ searchImages: null });
-    }
-
-    if (prevImgName !== nextImgName || prevPage !== nextPage) {
-      this.setState({ loading: true });
-      this.getImagesFromApi(nextImgName, nextPage);
-    }
-  }
-
-  onClose = () => {
-    this.setState({ isModalOpen: false });
+  const getLargeImg = largeImg => {
+    setLargeImg(largeImg);
+    setIsModalOpen(true);
   };
 
-  getLargeImg = largeImg => {
-    this.setState({ largeImg, isModalOpen: true });
-  };
-
-  getImagesFromApi = (searchImgName, page) => {
-    api(searchImgName, page)
-      .then(searchImages => {
-        this.setState(preveState => {
-          if (preveState.searchImages === null) {
-            return { searchImages: [...searchImages.hits] };
-          }
-          return {
-            searchImages: [...preveState.searchImages, ...searchImages.hits],
-          };
-        });
-
-        window.scrollTo({
-          top: document.body.scrollHeight,
-          behavior: 'smooth',
-        });
-      })
-      .catch(error => this.setState({ error }))
-      .finally(() => this.setState({ loading: false }));
-  };
-
-  render() {
-    const { searchImages, loading, error, isModalOpen, largeImg } = this.state;
-    return (
-      <>
-        {error && <p>{error.message}</p>}
-        {loading && (
-          <Loader
-            type="Hearts"
-            color="#3F51B5"
-            height={250}
-            width={250}
-            style={{ ...loaderStyle }}
-            timeout={3000}
-          />
-        )}
-        <ul className={styles.ImageGallery}>
-          {searchImages &&
-            searchImages.map(hit => (
-              <ImageGalleryItem
-                key={hit.id}
-                webformatURL={hit.webformatURL}
-                largeImageURL={hit.largeImageURL}
-                text={hit.tags}
-                onClick={this.getLargeImg}
-              />
-            ))}
-        </ul>
-        {isModalOpen && <Modal onClose={this.onClose} largeImg={largeImg} />}
-        {searchImages && searchImages.length > 11 && this.props.children}
-      </>
-    );
-  }
-}
+  return (
+    <>
+      {error && <p>{error.message}</p>}
+      {loading && (
+        <Loader
+          type="Hearts"
+          color="#3F51B5"
+          height={250}
+          width={250}
+          style={{ ...loaderStyle }}
+          timeout={3000}
+        />
+      )}
+      <ul className={styles.ImageGallery}>
+        {searchImages &&
+          searchImages.map(hit => (
+            <ImageGalleryItem
+              key={hit.id}
+              webformatURL={hit.webformatURL}
+              largeImageURL={hit.largeImageURL}
+              text={hit.tags}
+              onClick={getLargeImg}
+            />
+          ))}
+      </ul>
+      {isModalOpen && <Modal onClose={onClose} largeImg={largeImg} />}
+      {searchImages && searchImages.length > 11 && children}
+    </>
+  );
+};
 
 ImageGallery.propTypes = {
-  onSubmit: PropTypes.func,
+  searchImgName: PropTypes.string,
+  page: PropTypes.number,
+  children: PropTypes.node,
 };
 
 export default ImageGallery;
