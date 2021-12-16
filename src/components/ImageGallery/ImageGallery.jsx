@@ -1,13 +1,14 @@
-import styles from './ImageGallery.module.css';
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 //import { ToastContainer } from 'react-toastify';
+import Loader from 'react-loader-spinner';
+import 'react-loader-spinner/dist/loader/css/react-spinner-loader.css';
 
 import api from '../../services/api';
 import ImageGalleryItem from '../ImageGalleryItem/ImageGalleryItem';
 import Modal from '../Modal/Modal.jsx';
-import Loader from 'react-loader-spinner';
-import 'react-loader-spinner/dist/loader/css/react-spinner-loader.css';
+
+import styles from './ImageGallery.module.css';
 
 const loaderStyle = {
   position: 'fixed',
@@ -29,30 +30,38 @@ const ImageGallery = ({ searchImgName, page, children }) => {
   const [largeImg, setLargeImg] = useState(null);
 
   useEffect(() => {
-    setSearchImages(null);
-  }, [searchImgName]);
-
-  useEffect(() => {
     if (searchImgName === '') return;
 
     const getImagesFromApi = (searchImgName, page) => {
       api(searchImgName, page)
         .then(searchImages => {
           setSearchImages(preveImages => {
-            if (preveImages === null) {
-              return [...searchImages.hits];
-            }
-
-            return [...preveImages, ...searchImages.hits];
+            return page === 1
+              ? searchImages.hits
+              : [...preveImages, ...searchImages.hits];
           });
         })
         .catch(err => setError(err))
-        .finally(() => setLoading(false));
+        .finally(() => {
+          setLoading(false);
+        });
     };
 
     setLoading(true);
     getImagesFromApi(searchImgName, page);
   }, [searchImgName, page]);
+
+  useEffect(() => {
+    if (!loading) {
+      const timeId = setTimeout(() => {
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: 'smooth',
+        });
+        clearTimeout(timeId);
+      }, 250);
+    }
+  }, [loading]);
 
   const onClose = () => {
     setIsModalOpen(false);
